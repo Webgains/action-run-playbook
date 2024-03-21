@@ -1,0 +1,106 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
+name: 'Fetch Feature Server build'
+description: 'Fetch the docker image used to deploy Feature Servers'
+inputs:
+  playbook: 
+    description: 'The playbook to run'
+    required: true
+  inventory: 
+    description: 'The ansible inventory to use'
+    required: true
+  role-to-assume: 
+    description: 'The role to assume when running the playbook'
+    required: true
+  aws-access-key-id:
+    description: 'The access key to use to assume the playbook role'
+    required: true
+  aws-secret-access-key:
+    description: 'The secret access key to use to assume the playbook role'
+    required: true
+  aws-region:
+    description: 'The AWS region to use'
+    required: false
+    default: 'eu-west-2'
+  aws-repository-account:
+    description: 'The AWS account to use'
+    required: false
+    default: '289222877357'
+  repository:
+    description: 'The Docker repository'
+    required: false
+    default: "webgains/ansible-playbook"
+  tag:
+    description: 'The tag to use'
+    required: false
+    default: 'master_debian_bookworm'
+  args:
+    description: 'Additional arguments for the playbook'
+    required: false
+    default: ''
+  ssh-key:
+    description: 'SSH key to use for cloning any Git repositories'
+    required: false
+    default: ''
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set dynamic env vars
+      shell: bash
+      run: |
+        echo "IMAGE_URI=${{ inputs.aws-repository-account }}.dkr.ecr.${{ inputs.aws-region }}.amazonaws.com/${{ inputs.repository }}:${{ inputs.tag }}" >> $GITHUB_ENV
+        echo "ROLE_ID_NAME=$(echo ${{ github.actor }} | sed -E 's/\[.*\]//g')" >> $GITHUB_ENV
+
+    - name: Configure AWS Credentials
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-secret-access-key }}
+        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
+      run: |
+        KST=($(aws sts assume-role --role-arn "${{ inputs.role-to-assume }}" \
+                                   --role-session-name "${{ env.ROLE_ID_NAME }}@${{ github.event.repository.name }}" \
+                                   --duration-seconds 3600 \
+                                   --query "[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]" \
+                                   --output text))
+        echo "AWS_ACCESS_KEY_ID=${KST[0]}" >> $GITHUB_ENV
+        echo "AWS_SECRET_ACCESS_KEY=${KST[1]}" >> $GITHUB_ENV
+        echo "AWS_SESSION_TOKEN=${KST[2]}" >> $GITHUB_ENV
+        echo "AWS_SECURITY_TOKEN=${KST[2]}" >> $GITHUB_ENV
+        echo "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION" >> $GITHUB_ENV
+
+    - name: Login to Amazon ECR
+      shell: bash
+      run: |
+        echo "::group::ECR Login"
+        aws ecr get-login-password --region ${{ inputs.aws-region }} | docker login --username AWS --password-stdin ${{ inputs.aws-repository-account }}.dkr.ecr.${{ inputs.aws-region }}.amazonaws.com
+        echo "::endgroup::"
+
+    - name: Run the playbook
+      id: ansibleplaybook
+      shell: bash
+      run: |
+        set +e
+        eval $(ssh-agent)
+        if [ -n "${{ inputs.ssh-key }}" ]; then
+          ssh-add - <<< "${{ inputs.ssh-key }}"
+        fi
+        docker pull $IMAGE_URI
+        docker run \
+          --rm -i -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN \
+          -e ANSIBLE_USER=${{ env.ROLE_ID_NAME }} \
+          -e SSH_AUTH_SOCK=/ansible/.ssh.sock \
+          -v $SSH_AUTH_SOCK:/ansible/.ssh.sock \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v fsd-${{ inputs.name }}:/root/build \
+          -v $HOME/.docker:/root/.docker \
+          $IMAGE_URI \
+            --inventory ${{ inputs.inventory }} \
+            ${{ inputs.playbook }} \
+            ${{ inputs.args }} \
+            2>&1
+        EXIT_CODE=$?
+        echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+        eval "$(ssh-agent -k)"
+        exit $EXIT_CODE
