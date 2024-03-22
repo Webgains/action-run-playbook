@@ -86,7 +86,7 @@ runs:
         if [ -n "${{ inputs.ssh-key }}" ]; then
           ssh-add - <<< "${{ inputs.ssh-key }}"
         fi
-        docker pull $IMAGE_URI
+        VOLUME_NAME=apb-$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)
         docker run \
           --rm -i -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN \
           -e ANSIBLE_USER=${{ env.ROLE_ID_NAME }} \
@@ -95,7 +95,7 @@ runs:
           -e ANSIBLE_FORCE_COLOR=1 \
           -v $SSH_AUTH_SOCK:/ansible/.ssh.sock \
           -v /var/run/docker.sock:/var/run/docker.sock \
-          -v fsd-${{ inputs.name }}:/root/build \
+          -v $VOLUME_NAME:/root/build \
           -v $HOME/.docker:/root/.docker \
           $IMAGE_URI \
             --inventory ${{ inputs.inventory }} \
@@ -104,5 +104,6 @@ runs:
             2>&1
         EXIT_CODE=$?
         echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+        docker volume rm $VOLUME_NAME
         eval "$(ssh-agent -k)"
         exit $EXIT_CODE
