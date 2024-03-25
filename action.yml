@@ -97,6 +97,20 @@ runs:
           -v /var/run/docker.sock:/var/run/docker.sock \
           -v $VOLUME_NAME:/root/build \
           -v $HOME/.docker:/root/.docker \
+          --entrypoint /bin/bash \
+          $IMAGE_URI \
+            -c "env; aws sts get-caller-identity" \
+            2>&1
+        docker run \
+          --rm -i -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN \
+          -e ANSIBLE_USER=${{ env.ROLE_ID_NAME }} \
+          -e SSH_AUTH_SOCK=/ansible/.ssh.sock \
+          -e PY_COLORS=1 \
+          -e ANSIBLE_FORCE_COLOR=1 \
+          -v $SSH_AUTH_SOCK:/ansible/.ssh.sock \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v $VOLUME_NAME:/root/build \
+          -v $HOME/.docker:/root/.docker \
           $IMAGE_URI \
             --inventory ${{ inputs.inventory }} \
             ${{ inputs.playbook }} \
