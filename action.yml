@@ -98,7 +98,7 @@ runs:
           -v /var/run/docker.sock:/var/run/docker.sock \
           -v $VOLUME_NAME:/root/build \
           -v $HOME/.docker:/root/.docker \
-          --entyrpoint /bin/bash \
+          --entrypoint /bin/bash \
           $IMAGE_URI \
             -c env \
             2>&1
