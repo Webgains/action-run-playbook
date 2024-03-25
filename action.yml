@@ -89,7 +89,7 @@ runs:
         VOLUME_NAME=apb-$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)
         env
         docker run \
-          --rm -i -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN \
+          --rm -i -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN -e AWS_DEFAULT_REGION \
           -e ANSIBLE_USER=${{ env.ROLE_ID_NAME }} \
           -e SSH_AUTH_SOCK=/ansible/.ssh.sock \
           -e PY_COLORS=1 \
@@ -103,7 +103,7 @@ runs:
             -c "env; aws sts get-caller-identity" \
             2>&1
         docker run \
-          --rm -i -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN \
+          --rm -i -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN -e AWS_DEFAULT_REGION \
           -e ANSIBLE_USER=${{ env.ROLE_ID_NAME }} \
           -e SSH_AUTH_SOCK=/ansible/.ssh.sock \
           -e PY_COLORS=1 \
