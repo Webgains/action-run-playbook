@@ -9,15 +9,15 @@ inputs:
   inventory: 
     description: 'The ansible inventory to use'
     required: true
-  role-to-assume: 
-    description: 'The role to assume when running the playbook'
-    required: true
-  aws-access-key-id:
-    description: 'The access key to use to assume the playbook role'
-    required: true
-  aws-secret-access-key:
-    description: 'The secret access key to use to assume the playbook role'
-    required: true
+#  role-to-assume: 
+#    description: 'The role to assume when running the playbook'
+#    required: true
+#  aws-access-key-id:
+#    description: 'The access key to use to assume the playbook role'
+#    required: true
+#  aws-secret-access-key:
+#    description: 'The secret access key to use to assume the playbook role'
+#    required: true
   aws-region:
     description: 'The AWS region to use'
     required: false
@@ -52,23 +52,23 @@ runs:
         echo "IMAGE_URI=${{ inputs.aws-repository-account }}.dkr.ecr.${{ inputs.aws-region }}.amazonaws.com/${{ inputs.repository }}:${{ inputs.tag }}" >> $GITHUB_ENV
         echo "ROLE_ID_NAME=$(echo ${{ github.actor }} | sed -E 's/\[.*\]//g')" >> $GITHUB_ENV
 
-    - name: Configure AWS Credentials
-      shell: bash
-      env:
-        AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
-        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-secret-access-key }}
-        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
-      run: |
-        KST=($(aws sts assume-role --role-arn "${{ inputs.role-to-assume }}" \
-                                   --role-session-name "${{ env.ROLE_ID_NAME }}@${{ github.event.repository.name }}" \
-                                   --duration-seconds 3600 \
-                                   --query "[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]" \
-                                   --output text))
-        echo "AWS_ACCESS_KEY_ID=${KST[0]}" >> $GITHUB_ENV
-        echo "AWS_SECRET_ACCESS_KEY=${KST[1]}" >> $GITHUB_ENV
-        echo "AWS_SESSION_TOKEN=${KST[2]}" >> $GITHUB_ENV
-        echo "AWS_SECURITY_TOKEN=${KST[2]}" >> $GITHUB_ENV
-        echo "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION" >> $GITHUB_ENV
+#    - name: Configure AWS Credentials
+#      shell: bash
+#      env:
+#        AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
+#        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-secret-access-key }}
+#        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
+#      run: |
+#        KST=($(aws sts assume-role --role-arn "${{ inputs.role-to-assume }}" \
+#                                   --role-session-name "${{ env.ROLE_ID_NAME }}@${{ github.event.repository.name }}" \
+#                                   --duration-seconds 3600 \
+#                                   --query "[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]" \
+#                                   --output text))
+#        echo "AWS_ACCESS_KEY_ID=${KST[0]}" >> $GITHUB_ENV
+#        echo "AWS_SECRET_ACCESS_KEY=${KST[1]}" >> $GITHUB_ENV
+#        echo "AWS_SESSION_TOKEN=${KST[2]}" >> $GITHUB_ENV
+#        echo "AWS_SECURITY_TOKEN=${KST[2]}" >> $GITHUB_ENV
+#        echo "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION" >> $GITHUB_ENV
 
     - name: Login to Amazon ECR
       shell: bash
